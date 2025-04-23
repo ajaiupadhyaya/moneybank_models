@@ -1,0 +1,276 @@
+Traceback (most recent call last):
+  File "/Users/ajaiupadhyaya/Documents/moneybank_models/venv/lib/python3.13/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
+    executenb(
+    ~~~~~~~~~^
+        nb,
+        ^^^
+    ...<4 lines>...
+        **kwargs,
+        ^^^^^^^^^
+    )
+    ^
+  File "/Users/ajaiupadhyaya/Documents/moneybank_models/venv/lib/python3.13/site-packages/nbclient/client.py", line 1319, in execute
+    return NotebookClient(nb=nb, resources=resources, km=km, **kwargs).execute()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/ajaiupadhyaya/Documents/moneybank_models/venv/lib/python3.13/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/Users/ajaiupadhyaya/Documents/moneybank_models/venv/lib/python3.13/site-packages/nbclient/client.py", line 709, in async_execute
+    await self.async_execute_cell(
+        cell, index, execution_count=self.code_cells_executed + 1
+    )
+  File "/Users/ajaiupadhyaya/Documents/moneybank_models/venv/lib/python3.13/site-packages/nbclient/client.py", line 1062, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/Users/ajaiupadhyaya/Documents/moneybank_models/venv/lib/python3.13/site-packages/nbclient/client.py", line 918, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+def bond_dashboard_pro():
+    style    = {'description_width':'160px'}
+    ctrl_cls = {'_dom_classes':['control-card']}
+    out_cls  = {'_dom_classes':['output-card']}
+
+    # ── Controls ─────────────────────────────────────────
+    bond_type = widgets.Dropdown(
+        options=['Coupon Bond','Zero-Coupon Bond'], value='Coupon Bond',
+        description='Bond Type:', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    face_value = widgets.IntSlider(
+        value=1000, min=500, max=5000, step=100,
+        description='Face Value ($):', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    coupon_rate = widgets.FloatSlider(
+        value=0.05, min=0.0, max=0.15, step=0.0025,
+        description='Coupon Rate (%):', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    market_rate = widgets.FloatSlider(
+        value=0.05, min=0.01, max=0.15, step=0.0025,
+        description='Market YTM (%):', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    spot_rate = widgets.FloatSlider(
+        value=0.05, min=0.01, max=0.15, step=0.0025,
+        description='Spot Rate (%):', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    use_spot = widgets.Checkbox(
+        value=False, description='Use Spot Rate',
+        style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    maturity = widgets.IntSlider(
+        value=10, min=1, max=40, step=1,
+        description='Maturity (Yrs):', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    compare_tenors = widgets.SelectMultiple(
+        options=list(range(1,41)), value=[10,20,30],
+        description='Compare Tenors:', style=style, layout=widgets.Layout(width='100%'),
+        **ctrl_cls
+    )
+    play = widgets.Play(
+        value=market_rate.value, min=1, max=15, step=1, interval=200,
+        description='Animate Rate'
+    )
+    widgets.jslink((play, 'value'), (market_rate, 'value'))
+    scenario = widgets.ToggleButtons(
+        options=['Flat=5%','Invert=10%','Shock+2%'],
+        description='Scenario:', style=style,
+        **ctrl_cls
+    )
+
+    # ── Output Panes ────────────────────────────────────
+    out_sum, out_cf, out_curve, out_multi, out_ctx, out_ins = [
+        widgets.Output(**out_cls) for _ in range(6)
+    ]
+
+    # ── Scenario Logic ───────────────────────────────────
+    def on_scenario(change):
+        v = change['new']
+        if v=='Flat=5%':
+            market_rate.value = 0.05
+        elif v=='Invert=10%':
+            market_rate.value = 0.10
+        else:
+            market_rate.value = min(0.15, market_rate.value + 0.02)
+    scenario.observe(on_scenario, names='value')
+
+        def update(bt, F, cr, mr, sr, us, T, tens):
+        # ── Compute Core Metrics ────────────────────────
+        r     = sr if us else mr
+        C     = F * cr if bt == 'Coupon Bond' else 0
+        P     = calc_coupon_price(F, C, r, T) if C else calc_zero_price(F, r, T)
+        D     = calc_macaulay_duration(F, C, r, T) if C else T
+        Dm    = calc_modified_duration(D, r)
+        Cv    = calc_convexity(F, C, r, T) if C else 0
+        mD    = calc_macaulay_duration(F, C, 0.041, 10)
+        rates = np.linspace(0.01, 0.15, 200)
+        P10   = calc_zero_price(1000, 0.041, 10)
+
+        # ── Summary Pane ────────────────────────────────
+        with out_sum:
+            out_sum.clear_output()
+            display(HTML(f"""
+<div class="output-card">
+<b>📋 Results</b><br>
+Type: {bt}<br>
+Price: <b>${P:,.2f}</b><br>
+Macaulay Dur: <b>{D:.2f} yrs</b><br>
+Mod Dur: <b>{Dm:.2f} yrs</b><br>
+Convexity: <b>{Cv:.2f}</b><br>
+Market‐Dur (10y@4.1%): <b>{mD:.2f} yrs</b><br>
+Coupon: <b>${C:.2f}</b>
+</div>
+"""))
+
+        # ── PV Cash Flows with Gradient Line ────────────
+        with out_cf:
+            out_cf.clear_output()
+            yrs = np.arange(1, T+1)
+            cf  = [C]*(T-1) + [C+F] if C else [0]*(T-1)+[F]
+            pv  = [cf_i/(1+r)**t for t, cf_i in zip(yrs, cf)]
+            fig1 = go.Figure()
+            fig1.add_trace(go.Scatter(
+                x=yrs, y=pv, mode='lines+markers',
+                line=dict(color='teal', width=4, shape='spline'),
+                marker=dict(size=8, color='lightgreen'),
+                fill='tozeroy', fillcolor='rgba(0,255,200,0.2)',
+                hovertemplate='Year %{x}<br>PV: $%{y:.2f}<extra></extra>'
+            ))
+            fig1.update_layout(
+                template='plotly_dark',
+                title='Present Value of Cash Flows',
+                font_family='Segoe UI',
+                font_size=14,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(t=40,l=30,r=30,b=30),
+                height=300
+            )
+            display(fig1)
+
+        # ── Price vs Yield Curve with Fill ──────────────
+        with out_curve:
+            out_curve.clear_output()
+            prices = [
+                calc_coupon_price(F, C, rr, T) if C else calc_zero_price(F, rr, T)
+                for rr in rates
+            ]
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(
+                x=rates*100, y=prices, mode='lines',
+                line=dict(color='#FF6361', width=4),
+                fill='tozeroy', fillcolor='rgba(255,99,97,0.2)',
+                hovertemplate='Yield: %{x:.2f}%<br>Price: $%{y:.2f}<extra></extra>'
+            ))
+            fig2.update_layout(
+                template='plotly_dark',
+                title='Price vs Yield',
+                xaxis_title='Yield (%)',
+                yaxis_title='Price ($)',
+                font_family='Segoe UI',
+                font_size=14,
+                margin=dict(t=40,l=30,r=30,b=30),
+                height=300
+            )
+            display(fig2)
+
+        # ── Multi‐Tenor Comparison with Distinct Colors ──
+        with out_multi:
+            out_multi.clear_output()
+            fig3 = go.Figure()
+            palette = px.colors.qualitative.Dark24
+            for i, ten in enumerate(tens):
+                pr = [
+                    calc_coupon_price(F, C, rr, ten) if C else calc_zero_price(F, rr, ten)
+                    for rr in rates
+                ]
+                fig3.add_trace(go.Scatter(
+                    x=rates*100, y=pr, mode='lines',
+                    name=f'{ten} yrs',
+                    line=dict(color=palette[i % len(palette)], width=3)
+                ))
+            fig3.update_layout(
+                template='plotly_dark',
+                title='Yield Curves for Multiple Tenors',
+                xaxis_title='Yield (%)',
+                yaxis_title='Price ($)',
+                font_family='Segoe UI',
+                font_size=14,
+                margin=dict(t=40,l=30,r=30,b=30),
+                height=300
+            )
+            display(fig3)
+
+        # ── Live Context & Insight (unchanged) ──────────
+        with out_ctx:
+            out_ctx.clear_output()
+            display(HTML(f"""
+<div class="output-card">
+🌐 10Y ZCB @4.1% → <b>${P10:,.2f}</b>
+</div>
+"""))
+        with out_ins:
+            out_ins.clear_output()
+            display(HTML(f"""
+<div class="insight-box">
+ℹ️ At r={r:.2%}, Price=${P:,.2f}, Dur={D:.2f} yrs
+</div>
+"""))
+
+        # Live Context
+        with out_ctx:
+            out_ctx.clear_output()
+            display(HTML(f"""
+<div class="output-card">
+🌐 10Y ZCB @4.1% → <b>${P10:,.2f}</b>
+</div>
+"""))
+
+        # Insight Box
+        with out_ins:
+            out_ins.clear_output()
+            display(HTML(f"""
+<div class="insight-box">
+ℹ️ At r={r:.2%}, Price=${P:,.2f}, Duration={D:.2f} yrs
+</div>
+"""))
+
+    # Assemble & display
+    controls = widgets.VBox(
+        [bond_type, face_value, coupon_rate, market_rate, spot_rate,
+         use_spot, maturity, compare_tenors, play, scenario],
+        _dom_classes=['control-card']
+    )
+    outputs = widgets.Tab(
+        [out_sum, out_cf, out_curve, out_multi, out_ctx, out_ins],
+        _dom_classes=['output-card']
+    )
+    for idx, title in enumerate(
+        ['Summary','Cash Flows','Price Curve','Compare','Context','Insight']
+    ):
+        outputs.set_title(idx, title)
+    display(widgets.HBox([controls, outputs], _dom_classes=['grid-dashboard']))
+    widgets.interactive_output(update, {
+        'bt': bond_type, 'F': face_value, 'cr': coupon_rate,
+        'mr': market_rate, 'sr': spot_rate, 'us': use_spot,
+        'T': maturity, 'tens': compare_tenors
+    })
+
+# Launch it
+bond_dashboard_pro()
+------------------
+
+
+  [36mCell[39m[36m [39m[32mIn[3][39m[32m, line 74[39m
+[31m    [39m[31mdef update(bt, F, cr, mr, sr, us, T, tens):[39m
+    ^
+[31mIndentationError[39m[31m:[39m unexpected indent
+
+

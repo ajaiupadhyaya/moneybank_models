@@ -1,0 +1,18 @@
+title: Money & Banking Interactive
+author: Ajai Upadhyaya
+logo: _static/logo.png
+html:
+  favicon: _static/favicon.ico
+  extra_css:
+    - _static/custom.css
+  use_jupyter_widgets: true
+repository:
+  url: https://github.com/ajaiupadhyaya/moneybank_models
+  path_to_book: .
+  branch: main
+  theme: minima
+  markdown: kramdown
+  remote_theme: minima
+  remote_theme_branch: main
+  remote_theme_repo: ajaiupadhyaya/moneybank_models
+  remote_theme_path: _config.yml
